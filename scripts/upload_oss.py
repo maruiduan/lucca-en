@@ -29,19 +29,18 @@ def cache_for(rel: str) -> str:
         return "no-cache, must-revalidate"
     return "no-cache, must-revalidate"
 
-# Exact headers on live HTML / robots.txt / sitemap.xml (2026-10-24).
-# PutObject must resend this whole set or the next deploy wipes it.
-# hm.baidu.com stays out: en has no Tongji site id (see site/index.html).
-# This policy blocks lesson.js recording: microphone=() denies getUserMedia,
-# and media-src 'self' does not allow new Audio(blob:). Not widened here.
+# Live headers from 2026-10-24, with two recording exceptions:
+# microphone=(self) so lesson.js can call getUserMedia({audio});
+# media-src includes blob: so new Audio(blob:) can play the take back.
+# Camera and geolocation stay off. hm.baidu.com stays out (no Tongji site id).
 CSP = (
     "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; "
     "img-src 'self' data: https:; font-src 'self' data:; "
-    "media-src 'self'; "
+    "media-src 'self' blob:; "
     "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
     "connect-src 'self'; form-action 'self'"
 )
-PERMISSIONS = "geolocation=(), microphone=(), camera=()"
+PERMISSIONS = "geolocation=(), microphone=(self), camera=()"
 COMMON_SECURITY = (
     ("Permissions-Policy", PERMISSIONS),
     ("Referrer-Policy", "strict-origin-when-cross-origin"),
@@ -88,12 +87,14 @@ def _self_check() -> None:
     plain = _decode_persistent(object_headers("robots.txt")["x-oss-persistent-headers"])
     site = _decode_persistent(object_headers("sitemap.xml")["x-oss-persistent-headers"])
     assert html["Content-Security-Policy"] == CSP
-    assert "blob:" not in html["Content-Security-Policy"]
+    assert "media-src 'self' blob:" in html["Content-Security-Policy"]
     assert "hm.baidu.com" not in html["Content-Security-Policy"]
     assert "'unsafe-inline'" in html["Content-Security-Policy"]
     assert html["Permissions-Policy"] == PERMISSIONS
-    assert "microphone=()" in html["Permissions-Policy"]
+    assert "microphone=(self)" in html["Permissions-Policy"]
+    assert "microphone=()" not in html["Permissions-Policy"]
     assert "camera=()" in html["Permissions-Policy"]
+    assert "geolocation=()" in html["Permissions-Policy"]
     for key, value in COMMON_SECURITY:
         assert html[key] == value and plain[key] == value and site[key] == value
     assert "Content-Security-Policy" not in plain and "Content-Security-Policy" not in site
