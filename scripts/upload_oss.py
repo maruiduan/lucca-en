@@ -32,13 +32,14 @@ def cache_for(rel: str) -> str:
 # Live headers from 2026-10-24, with two recording exceptions:
 # microphone=(self) so lesson.js can call getUserMedia({audio});
 # media-src includes blob: so new Audio(blob:) can play the take back.
-# Camera and geolocation stay off. hm.baidu.com stays out (no Tongji site id).
+# Camera and geolocation stay off.
+# hm.baidu.com is the en.lucca.top Baidu Tongji host (script, connect, img).
 CSP = (
     "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; "
-    "img-src 'self' data: https:; font-src 'self' data:; "
+    "img-src 'self' data: https://hm.baidu.com https:; font-src 'self' data:; "
     "media-src 'self' blob:; "
-    "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
-    "connect-src 'self'; form-action 'self'"
+    "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://hm.baidu.com; "
+    "connect-src 'self' https://hm.baidu.com; form-action 'self'"
 )
 PERMISSIONS = "geolocation=(), microphone=(self), camera=()"
 COMMON_SECURITY = (
@@ -88,7 +89,10 @@ def _self_check() -> None:
     site = _decode_persistent(object_headers("sitemap.xml")["x-oss-persistent-headers"])
     assert html["Content-Security-Policy"] == CSP
     assert "media-src 'self' blob:" in html["Content-Security-Policy"]
-    assert "hm.baidu.com" not in html["Content-Security-Policy"]
+    csp = html["Content-Security-Policy"]
+    for name in ("script-src", "connect-src", "img-src"):
+        directive = next(part.strip() for part in csp.split(";") if part.strip().startswith(name + " "))
+        assert "https://hm.baidu.com" in directive, name
     assert "'unsafe-inline'" in html["Content-Security-Policy"]
     assert html["Permissions-Policy"] == PERMISSIONS
     assert "microphone=(self)" in html["Permissions-Policy"]
