@@ -1,0 +1,26 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon.ico" sizes="any">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#16150f" media="(prefers-color-scheme: dark)">
+<title>英语 · 演讲跟读</title><!--seo--><meta name="description" content="用经典英语演讲练听力和口语：每段 1–2 分钟，听大意、逐句听写、弄懂、模仿跟读、自己复述五步走。"><link rel="canonical" href="https://en.lucca.top/"><meta property="og:type" content="website"><meta property="og:site_name" content="英语 · lucca"><meta property="og:title" content="英语 · 演讲跟读"><meta property="og:description" content="用经典英语演讲练听力和口语：每段 1–2 分钟，听大意、逐句听写、弄懂、模仿跟读、自己复述五步走。"><meta property="og:url" content="https://en.lucca.top/"><meta property="og:locale" content="zh_CN"><meta name="twitter:card" content="summary"><!--/seo-->
+<link rel="stylesheet" href="assets/en.css"></head><body>
+<div class="wrap">
+ <div class="crumb"><a class="home" href="https://www.lucca.top/" aria-label="回 lucca 首页"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"/></svg><span>lucca</span></a><span>/</span><span>英语</span><span style="flex:1"></span><a href="vocab/">生词本 <b id="vc"></b></a></div>
+ <div class="brand"><div class="seal">En</div><h1>演讲跟读</h1></div>
+ <p class="tag">用经典演讲练耳朵和嘴巴。每段 1–2 分钟，按五步走：先听大意，再一句句写出来，然后弄懂、模仿，最后自己讲一遍。</p>
+ <div class="steps-intro"><div><b>👂</b>盲听</div><div><b>✍️</b>听写</div><div><b>📖</b>精读</div><div><b>🎙</b>跟读</div><div><b>🗣</b>复述</div></div>
+ <div class="sec">五篇演讲 · 由易到难</div>
+ <div class="list" id="list"></div>
+ <div class="foot">适合四级左右的水平。不用登录，进度和生词本保存在这台设备的浏览器里。</div>
+</div>
+<script src="assets/core.js"></script>
+<script>
+const T=[
+ {n:1,href:'jobs/',zh:'乔布斯：斯坦福毕业演讲',en:'Steve Jobs · Stanford Commencement · 2005',d:'15 分钟 · 9 段',p:'三个人生故事：把点连成线、爱与失去、死亡。语速慢、用词朴素，最经典的入门材料。',live:true,slug:'jobs',segs:9},
+ {n:2,href:'urban/',zh:'拖延症患者的内心世界',en:'Tim Urban · TED · 2016',d:'14 分钟 · 10 段',p:'幽默、口语化，练日常表达和美式语气。',live:true,slug:'urban',segs:10},
+ {n:3,href:'cuddy/',zh:'肢体语言塑造你自己',en:'Amy Cuddy · TED · 2012',d:'21 分钟 · 15 段',p:'语速适中，心理学词汇稍多。',live:true,slug:'cuddy',segs:15},
+ {n:4,href:'robinson/',zh:'学校扼杀了创造力吗？',en:'Sir Ken Robinson · TED · 2006',d:'19 分钟 · 13 段',p:'英式口音、幽默故事多，换换耳朵；谈教育与创造力。',live:true,slug:'robinson',segs:13},
+ {n:5,href:'feifei/',zh:'我们怎样教计算机看懂图片',en:'Fei-Fei Li · TED · 2015',d:'18 分钟 · 11 段',p:'和 AI 栏目呼应，科技词汇多，作为进阶。',live:true,slug:'feifei',segs:11}];
+const html=T.map(t=>{let prog='';if(t.live){const p=EN.LS.get('en.'+t.slug+'.p',{});const done=Object.values(p.done||{}).reduce((a,d)=>a+d.filter(Boolean).length,0),all=t.segs*5;prog='<div class="bar"><i style="width:'+(done/all*100)+'%"></i></div><div class="meta" style="margin-top:6px"><span class="note">已完成 '+done+' / '+all+' 步</span></div>'}
+ return (t.live?'<a class="item" href="'+t.href+'">':'<div class="item soon">')+'<div class="num">'+t.n+'</div><div style="flex:1;min-width:0"><h3>'+t.zh+'</h3><div class="en">'+t.en+'</div><p>'+t.p+'</p><div class="meta">'+(t.live?'':'<span class="badge">'+(t.soon||'即将上线')+'</span>')+'<span class="badge">'+t.d+'</span></div>'+prog+'</div>'+(t.live?'</a>':'</div>')}).join('');
+document.getElementById('list').innerHTML=html;
+const n=Object.keys(EN.Vocab.all()).length;document.getElementById('vc').textContent=n||'';
+</script></body></html>

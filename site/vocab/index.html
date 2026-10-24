@@ -1,0 +1,35 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon.ico" sizes="any">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#16150f" media="(prefers-color-scheme: dark)">
+<title>生词本 · 英语</title><!--seo--><meta name="description" content="英语演讲跟读的生词本：收集练习中遇到的单词，随时复习。"><link rel="canonical" href="https://en.lucca.top/vocab/"><meta property="og:type" content="article"><meta property="og:site_name" content="英语 · lucca"><meta property="og:title" content="生词本 · 英语"><meta property="og:description" content="英语演讲跟读的生词本：收集练习中遇到的单词，随时复习。"><meta property="og:url" content="https://en.lucca.top/vocab/"><meta property="og:locale" content="zh_CN"><meta name="twitter:card" content="summary"><!--/seo-->
+<link rel="stylesheet" href="../assets/en.css"></head><body>
+<div class="wrap">
+ <div class="crumb"><a class="home" href="https://www.lucca.top/" aria-label="回 lucca 首页"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"/></svg><span>lucca</span></a><span>/</span><a href="../">英语 · 演讲跟读</a><span>/</span><span>生词本</span></div>
+ <div class="brand"><div class="seal">词</div><h1>生词本</h1></div>
+ <p class="tag">按遗忘曲线安排复习：记得的词间隔越拉越长（2 天 → 5 天 → 两周左右），忘了的 10 分钟后再来。</p>
+ <div class="sec">今天</div>
+ <div class="stats"><div><b id="sDue">0</b><span>待复习</span></div><div><b id="sAll">0</b><span>全部</span></div><div><b id="sOk">0</b><span>已掌握</span></div></div>
+ <div id="review" style="margin-top:14px"></div>
+ <div class="sec">全部生词</div>
+ <div class="vlist" id="vlist"></div>
+</div>
+<div class="sheet-bg" id="sheetBg"></div>
+<script src="../assets/core.js"></script>
+<script>
+const {Vocab,speak,esc,SPK,toast}=EN,$=s=>document.querySelector(s);
+let queue=[],cur=null,shown=false;
+function stats(){const a=Object.values(Vocab.all());$('#sDue').textContent=Vocab.due().length;$('#sAll').textContent=a.length;$('#sOk').textContent=a.filter(x=>x.iv>=21).length}
+function list(){const a=Object.values(Vocab.all()).sort((x,y)=>y.added-x.added);
+ $('#vlist').innerHTML=a.length?a.map(x=>{const d=Math.ceil((x.due-Date.now())/864e5);return '<div class="vrow"><button class="spk" data-s="'+esc(x.w)+'">'+SPK+'</button><div style="min-width:0;flex:1"><div class="wd">'+esc(x.w)+'</div><div class="mn">'+esc(x.m||x.ctxzh||'')+'</div></div><span class="due">'+(d<=0?'今天':d+' 天后')+'</span><button class="x" data-x="'+esc(x.w)+'" aria-label="删除">✕</button></div>'}).join(''):'<div class="empty">还没有生词。<br>在课文「精读」里点单词，就能加进来。<br><a href="../jobs/">去学第一篇 →</a></div>';
+ document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>speak(b.dataset.s));
+ document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('从生词本删除「'+b.dataset.x+'」？')){Vocab.remove(b.dataset.x);refresh()}})}
+function review(){queue=Vocab.due();cur=queue[0];shown=false;const r=$('#review');
+ if(!cur){r.innerHTML=Object.keys(Vocab.all()).length?'<div class="card-rv"><div style="font-size:40px">🎉</div><div class="mean">今天的复习都做完了</div><div class="note" style="margin-top:6px">明天再来，或者去学一段新内容。</div></div>':'';return}
+ r.innerHTML='<div class="card-rv" id="card"><div class="note">还剩 '+queue.length+' 个</div><div style="margin-top:14px"><span class="word-big">'+esc(cur.w)+'</span><button class="spk" id="sp">'+SPK+'</button></div>'+(cur.ipa?'<div class="ipa" style="margin:4px 0 0">'+esc(cur.ipa)+'</div>':'')+
+ '<div id="back" style="display:none;align-self:stretch;margin-top:12px">'+(cur.m?'<div class="mean">'+esc(cur.m)+'</div>':'')+(cur.ex?'<div class="ex" style="text-align:left">'+esc(cur.ex)+'<small>'+esc(cur.exzh)+'</small></div>':'')+(cur.ctx?'<div class="ctx">原句：'+esc(cur.ctx)+'<br>'+esc(cur.ctxzh||'')+'</div>':'')+(!cur.m?'<div style="margin-top:10px"><a href="https://dict.youdao.com/result?word='+encodeURIComponent(cur.w)+'&lang=en" target="_blank" rel="noopener">查有道词典</a></div>':'')+'</div>'+
+ '<button class="btn pri" id="flip" style="margin-top:18px">想一想，点这里看答案</button></div><div class="grade" id="grade" style="display:none"><button class="g0" data-g="0">忘了<small>'+Vocab.nextLabel(cur,0)+'</small></button><button data-g="1">模糊<small>'+Vocab.nextLabel(cur,1)+'</small></button><button class="g2" data-g="2">记得<small>'+Vocab.nextLabel(cur,2)+'</small></button></div>';
+ $('#sp').onclick=()=>speak(cur.w);speak(cur.w);
+ $('#flip').onclick=()=>{$('#back').style.display='block';$('#flip').style.display='none';$('#grade').style.display='grid'};
+ document.querySelectorAll('#grade button').forEach(b=>b.onclick=()=>{Vocab.grade(cur.w,+b.dataset.g);refresh()})}
+function refresh(){stats();list();review()}
+refresh();
+</script></body></html>
