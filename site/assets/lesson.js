@@ -4,12 +4,12 @@ const L=window.LESSON,S=L.sentences,SEG=L.segments,{LS,Vocab,speak,toast,SPK,esc
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const PK='en.'+L.slug+'.p';
 const P=Object.assign({seg:0,step:0,done:{},dict:{},draft:{},sub:'bi',listens:{},rate:1,t:{}},LS.get(PK,{}));
-['draft','t','done','dict','listens'].forEach(k=>{if(!P[k]||typeof P[k]!=='object')P[k]={}});
+['draft','t','done','dict','listens'].forEach(k=>{if(!P[k]||typeof P[k]!=='object'||Array.isArray(P[k]))P[k]={}});
 const saveP=()=>LS.set(PK,P);
 const STEPS=[['盲听','01'],['听写','02'],['精读','03'],['跟读','04'],['复述','05']];
 const HIDE_STEPS=[0,1,4];           /* transcript covered in these steps */
 const RATES=[1,0.75,0.5];
-const st={seg:Math.min(P.seg||0,SEG.length-1),step:P.step||0,sub:'bi',rate:RATES.includes(P.rate)?P.rate:1,repeat:false,loopId:null,a:null,b:null,stopAt:null,onStop:null,
+const st={seg:Number.isInteger(P.seg)&&P.seg>=0&&P.seg<SEG.length?P.seg:0,step:Number.isInteger(P.step)&&P.step>=0&&P.step<STEPS.length?P.step:0,sub:'bi',rate:RATES.includes(P.rate)?P.rate:1,repeat:false,loopId:null,a:null,b:null,stopAt:null,onStop:null,
   cur:-1,follow:true,dictId:null,shId:null,playing:false,peekAll:false,sheet:null,resume:false,listenFrom:null};
 let M=null;
 const fmt=t=>{t=Math.max(0,t|0);return (t/60|0)+':'+String(t%60).padStart(2,'0')};
@@ -29,10 +29,10 @@ async function initMedia(){
     M.a&&M.a.addEventListener('ended',()=>{st.playing=false;updPlay()})}
   M.setRate(st.rate);M.on(e=>{st.playing=e==='play';updPlay();updSession()});window.__M=M;document.body.dataset.src=M.kind;tick();
 }
-function play(){if(!M)return;const g=seg(),t=M.time();if(t>=g.e-0.05||t<g.s-0.5)M.seek(g.s);if(st.step===0)st.listenFrom=M.time();M.play()}
-function pause(){M&&M.pause()}
-function playFrom(i,once,cb){if(!M)return;st.stopAt=once?S[i].e:null;st.onStop=cb||null;if(st.repeat){st.loopId=i;updLoopChip()}M.seek(S[i].s);M.play();setCur(i,true)}
-function playSeg(cb){const g=seg();st.stopAt=g.e;st.onStop=cb||null;st.listenFrom=g.s;M.seek(g.s);M.play()}
+function play(){if(!M)return;stopExtras();const g=seg(),t=M.time();if(t>=g.e-0.05||t<g.s-0.5)M.seek(g.s);if(st.step===0)st.listenFrom=M.time();M.play()}
+function pause(){stopExtras();M&&M.pause()}
+function playFrom(i,once,cb){if(!M)return;stopExtras();st.stopAt=once?S[i].e:null;st.onStop=cb||null;if(st.repeat){st.loopId=i;updLoopChip()}M.seek(S[i].s);M.play();setCur(i,true)}
+function playSeg(cb){if(!M)return;stopExtras();const g=seg();st.stopAt=g.e;st.onStop=cb||null;st.listenFrom=g.s;M.seek(g.s);M.play()}
 function updPlay(){$('#icPlay').innerHTML=st.playing?'<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';$('#bPlay').setAttribute('aria-label',st.playing?'暂停':'播放')}
 function idxAt(t){let lo=0,hi=S.length-1,r=0;while(lo<=hi){const m=(lo+hi)>>1;if(S[m].s<=t+0.05){r=m;lo=m+1}else hi=m-1}return r}
 /* loop / stop logic — shared by rAF tick and audio timeupdate */
@@ -70,12 +70,12 @@ $('#toCur').onclick=()=>{st.follow=true;const el=$('#s'+st.cur);el&&scrollToSent
 
 /* ---------- thumb bar ---------- */
 $('#bPlay').onclick=()=>{if(!M)return;M.paused()?play():pause()};
-$('#bPrev').onclick=()=>{const c=Math.max(seg().from,st.cur);const i=Math.max(seg().from,(M.time()-S[c].s>1.2?c:c-1));step13Sync(i);playFrom(i,false)};
+$('#bPrev').onclick=()=>{if(!M)return;const c=Math.max(seg().from,st.cur);const i=Math.max(seg().from,(M.time()-S[c].s>1.2?c:c-1));step13Sync(i);playFrom(i,false)};
 $('#bNext').onclick=()=>{const i=Math.min(seg().to,Math.max(seg().from,st.cur+1));step13Sync(i);playFrom(i,false)};
 function step13Sync(i){if(st.step===1){st.dictId=i;renderPanel()}if(st.step===3){st.shId=i;updShadowBig()}}
-$('#bRep').onclick=()=>{st.repeat=!st.repeat;const base=st.step===3?st.shId:st.step===1?st.dictId:st.cur;st.loopId=st.repeat?Math.min(seg().to,Math.max(seg().from,base==null?st.cur:base)):null;
+$('#bRep').onclick=()=>{if(!M)return;st.repeat=!st.repeat;const base=st.step===3?st.shId:st.step===1?st.dictId:st.cur;st.loopId=st.repeat?Math.min(seg().to,Math.max(seg().from,base==null?st.cur:base)):null;
   if(st.repeat){st.a=st.b=null;updAB()}$('#bRep').classList.toggle('on',st.repeat);updLoopChip();if(st.repeat&&M.paused())playFrom(st.loopId,false)};
-$('#bAB').onclick=()=>{const c=Math.max(seg().from,st.cur);
+$('#bAB').onclick=()=>{if(!M)return;const c=Math.max(seg().from,st.cur);
   if(st.a==null){st.a=c;if(st.repeat){st.repeat=false;$('#bRep').classList.remove('on')}toast('已设起点 A，播放到想停的句子再点一次')}
   else if(st.b==null){st.b=Math.max(st.a,c);M.seek(S[st.a].s);M.play()}
   else{st.a=st.b=null}
@@ -99,7 +99,7 @@ $$('#subMode button').forEach(b=>b.addEventListener('click',()=>{P.subTouched=1;
 (function(){const tb=$('#timebar');const go=e=>{const r=tb.getBoundingClientRect(),x=e.clientX-r.left,g=seg();M&&M.seek(g.s+(g.e-g.s)*Math.min(1,Math.max(0,x/r.width)))};tb.addEventListener('pointerdown',e=>{go(e);tb.setPointerCapture(e.pointerId);tb.onpointermove=go;tb.onpointerup=()=>tb.onpointermove=null})})();
 
 /* ---------- segments / tabs ---------- */
-function doneArr(n){return P.done[n]||(P.done[n]=[0,0,0,0,0])}
+function doneArr(n){if(!Array.isArray(P.done[n])||P.done[n].length!==5)P.done[n]=[0,0,0,0,0];return P.done[n]}
 const firstTodo=n=>{const d=doneArr(n),k=d.indexOf(0);return k<0?0:k};
 const doneN=n=>doneArr(n).filter(Boolean).length;
 function renderSegs(){$('#segs').innerHTML=SEG.map((g,k)=>{const d=doneArr(g.n),n=doneN(g.n);return '<button data-k="'+k+'" class="'+(k===st.seg?'on':'')+(n===5?' all':'')+'"><b>'+String(g.n).padStart(2,'0')+'</b> <small>'+fmt(g.e-g.s)+' · '+(g.to-g.from+1)+'句</small><span>'+esc(g.zh)+'</span><div class="dots">'+d.map(x=>'<i class="'+(x?'d':'')+'"></i>').join('')+'<em>'+(n===5?'✓ 完成':n+'/5')+'</em></div></button>'}).join('');
@@ -107,10 +107,10 @@ function renderSegs(){$('#segs').innerHTML=SEG.map((g,k)=>{const d=doneArr(g.n),
   $('#segNo').textContent='第 '+(st.seg+1)+'/'+SEG.length+' 段';$('#tbSeg').textContent=String(seg().n).padStart(2,'0')+' '+seg().zh;$('#tEnd').textContent=fmt(seg().e-seg().s)}
 function renderTabs(){const d=doneArr(seg().n);$('#tabs').innerHTML=STEPS.map((s,k)=>'<button data-k="'+k+'" class="'+(k===st.step?'on ':'')+(d[k]?'done':'')+'"><i>'+s[1]+'</i>'+s[0]+'</button>').join('');$$('#tabs button').forEach(b=>b.onclick=()=>selStep(+b.dataset.k))}
 function resetLoops(){st.a=st.b=null;st.repeat=false;st.loopId=null;st.stopAt=null;st.onStop=null;$('#bRep').classList.remove('on');updAB();updLoopChip()}
-function selSeg(k){if(M){M.pause()}st.seg=k;P.seg=k;st.dictId=null;st.shId=null;st.peekAll=false;resetLoops();
+function selSeg(k){stopExtras();if(M){M.pause()}st.seg=k;P.seg=k;st.dictId=null;st.shId=null;st.peekAll=false;resetLoops();
   st.step=firstTodo(SEG[k].n);P.step=st.step;saveP();closeSheet(true);renderAll();
   const g=seg();if(M){M.seek(g.s)}setCur(g.from,true);scrollToCard()}
-function selStep(k,noScroll){if(M)M.pause();st.step=k;P.step=k;saveP();st.peekAll=false;resetLoops();renderAll();
+function selStep(k,noScroll){stopExtras();closeSheet(true);if(M)M.pause();st.step=k;P.step=k;saveP();st.peekAll=false;resetLoops();renderAll();
   const g=seg();
   if(M){if(k===1){M.seek(S[st.dictId].s);setCur(st.dictId,true)}else if(k===3){M.seek(S[st.shId].s);setCur(st.shId,true)}else{M.seek(g.s);setCur(g.from,true)}}
   if(!noScroll)scrollToCard()}
@@ -191,7 +191,7 @@ function renderPanel(){const g=seg(),k=st.step,el=$('#panel');
     const go=j=>{st.dictId=j;renderPanel();playFrom(j,true)};
     $('#dPlay').onclick=()=>playFrom(i,true);
     $('#dPrev').onclick=()=>{if(i>g.from)go(i-1)};$('#dNext').onclick=()=>{if(i<g.to)go(i+1);else toast('已经是最后一句')};
-    const ta=$('#dIn');ta.value=P.draft[i]||'';ta.oninput=()=>{P.draft[i]=ta.value;saveP()};
+    const ta=$('#dIn');ta.value=P.draft[i]||'';ta.oninput=()=>{P.draft[i]=ta.value;saveP();checked=false;$('#dChk').textContent='核对';$('#dRes').textContent=''};
     let checked=false;const chk=give=>{checkDict(i,ta.value,give);checked=true};
     $('#dChk').onclick=()=>checked?$('#dNext').click():chk();$('#dShow').onclick=()=>chk(true);
     ta.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();checked?(i<g.to?go(i+1):toast('已经是最后一句')):chk()}};
@@ -227,8 +227,9 @@ function updShadowBig(){const b=$('#shBig');if(!b)return;const s=S[st.shId],g=se
 
 /* dictation diff (LCS on normalized words) */
 const NUMW={'18':'eighteen','17':'seventeen','20':'twenty','30':'thirty','33':'thirty-three','35':'thirty-five'};
+const canonical=w=>{for(const k in NUMW)if(w===NUMW[k])return k;return w};
 const norm=s=>s.toLowerCase().replace(/[’‘]/g,"'").replace(/—/g,' ').split(/\s+/).map(w=>w.replace(/^[^a-z0-9$']+|[^a-z0-9']+$/g,'')).filter(Boolean);
-function checkDict(i,typed,giveup){const ref=S[i].en.replace(/—/g,' — ').split(/\s+/).filter(Boolean),R=norm(S[i].en.replace(/—/g,' ')),T=norm(typed).map(w=>{for(const k in NUMW)if(w===NUMW[k])return k;return w});
+function checkDict(i,typed,giveup){const ref=S[i].en.replace(/—/g,' — ').split(/\s+/).filter(Boolean),R=norm(S[i].en.replace(/—/g,' ')).map(canonical),T=norm(typed).map(canonical);
   const n=R.length,m=T.length,D=Array.from({length:n+1},()=>new Array(m+1).fill(0));
   for(let a=n-1;a>=0;a--)for(let b=m-1;b>=0;b--)D[a][b]=R[a]===T[b]?D[a+1][b+1]+1:Math.max(D[a+1][b],D[a][b+1]);
   const okR=new Set(),extra=[];let a=0,b=0;while(a<n&&b<m){if(R[a]===T[b]){okR.add(a);a++;b++}else if(D[a+1][b]>=D[a][b+1])a++;else{extra.push(T[b]);b++}}while(b<m)extra.push(T[b++]);
@@ -240,26 +241,49 @@ function checkDict(i,typed,giveup){const ref=S[i].en.replace(/—/g,' — ').spl
   $('#dChk').textContent=i<g.to?'下一句 ›':'最后一句了';}
 
 /* ---------- recording (local only: memory + IndexedDB on this device) ---------- */
-const REC=new Map();let rec=null,recKey=null,stream=null,recChunks=[],recTimer=null;
+const REC=new Map();let capture=null,recRequest=0,recPending=false,compareTimer=null,mine=null;
 const IDB={db:null,open(){return new Promise(r=>{try{const q=indexedDB.open('lucca-en-rec',1);q.onupgradeneeded=()=>q.result.createObjectStore('r');q.onsuccess=()=>{this.db=q.result;r(this.db)};q.onerror=()=>r(null)}catch(e){r(null)}})},
   put(k,b){if(!this.db)return;try{this.db.transaction('r','readwrite').objectStore('r').put(b,L.slug+':'+k)}catch(e){}},
   all(){return new Promise(r=>{if(!this.db)return r([]);const out=[];try{const c=this.db.transaction('r').objectStore('r').openCursor();c.onsuccess=()=>{const x=c.result;if(x){out.push([x.key,x.value]);x.continue()}else r(out)};c.onerror=()=>r(out)}catch(e){r(out)}})}};
 async function loadRecs(){await IDB.open();for(const [k,b] of await IDB.all()){if(!String(k).startsWith(L.slug+':'))continue;let key=String(k).slice(L.slug.length+1);if(/^\d+$/.test(key))key=+key;REC.set(key,{url:URL.createObjectURL(b),blob:b})}}
 async function toggleRec(key){
-  if(rec&&rec.state==='recording'){rec.stop();return}
+  if(capture){if(capture.recorder.state==='recording')capture.recorder.stop();return}
+  if(recPending)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){toast('这个浏览器不支持录音（iPhone 请用 Safari 14.3 以上；微信里请点右上角用浏览器打开）',4000);return}
-  try{stream=stream&&stream.active?stream:await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){toast('没有拿到麦克风权限');return}
-  M.pause();recChunks=[];recKey=key;rec=new MediaRecorder(stream);rec.ondataavailable=e=>e.data.size&&recChunks.push(e.data);
-  rec.onstop=async()=>{clearTimeout(recTimer);const blob=new Blob(recChunks,{type:rec.mimeType||'audio/webm'});const k=recKey;const old=REC.get(k);old&&URL.revokeObjectURL(old.url);REC.set(k,{url:URL.createObjectURL(blob),blob});IDB.put(k,blob);setRecBtn(false);
-    stream&&stream.getTracks().forEach(t=>t.stop());stream=null;
-    if(typeof k==='number'){if(st.step===3){updShadowBig();if(segIds(seg()).filter(i=>REC.get(i)).length>=Math.ceil((seg().to-seg().from+1)/2))markDone(3,'跟读过半，本段「跟读」完成 ✓');if(!document.hidden)compare(k)}}
-    else{const m=$('#rMine');m&&(m.disabled=false);const w=$('#wave');w&&(w.hidden=false);drawWave(REC.get(k))}};
-  rec.start();setRecBtn(true);
-  const max=typeof key==='number'?Math.max(4,(S[key].e-S[key].s)*2+2):180;recTimer=setTimeout(()=>{if(rec&&rec.state==='recording'&&recKey===key)rec.stop()},max*1000)}
-function stopRec(){if(rec&&rec.state==='recording')rec.stop()}
+  stopExtras();M&&M.pause();
+  const request=++recRequest,originSeg=st.seg,originStep=st.step;recPending=true;
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){if(request===recRequest){recPending=false;toast('没有拿到麦克风权限')}return}
+  if(request!==recRequest){stream.getTracks().forEach(t=>t.stop());return}
+  recPending=false;
+  let recorder;
+  try{recorder=new MediaRecorder(stream)}catch(e){stream.getTracks().forEach(t=>t.stop());toast('无法启动录音，请换一个浏览器重试');return}
+  const session={recorder,stream,key,chunks:[],timer:null,preview:true};capture=session;
+  recorder.ondataavailable=e=>{if(e.data.size)session.chunks.push(e.data)};
+  recorder.onstop=()=>{
+    clearTimeout(session.timer);stream.getTracks().forEach(t=>t.stop());
+    if(capture===session){capture=null;setRecBtn(false)}
+    if(session.failed||!session.chunks.length)return;
+    const blob=new Blob(session.chunks,{type:recorder.mimeType||'audio/webm'}),old=REC.get(key);
+    old&&URL.revokeObjectURL(old.url);REC.set(key,{url:URL.createObjectURL(blob),blob});IDB.put(key,blob);
+    if(st.seg!==originSeg||st.step!==originStep)return;
+    if(typeof key==='number'){
+      updShadowBig();
+      if(segIds(seg()).filter(i=>REC.get(i)).length>=Math.ceil((seg().to-seg().from+1)/2))markDone(3,'跟读过半，本段「跟读」完成 ✓');
+      if(session.preview&&!document.hidden&&st.shId===key)compare(key);
+    }else{const m=$('#rMine');m&&(m.disabled=false);drawWave(REC.get(key))}
+  };
+  recorder.onerror=()=>{session.failed=true;session.preview=false;stream.getTracks().forEach(t=>t.stop());clearTimeout(session.timer);if(capture===session){capture=null;setRecBtn(false)}toast('录音失败，请重试')};
+  try{recorder.start()}catch(e){recorder.onerror();return}
+  setRecBtn(true);
+  const max=typeof key==='number'?Math.max(4,(S[key].e-S[key].s)*2+2):180;
+  session.timer=setTimeout(()=>{if(recorder.state==='recording')recorder.stop()},max*1000);
+}
+function stopRec(){recRequest++;recPending=false;if(capture){capture.preview=false;if(capture.recorder.state==='recording')capture.recorder.stop()}}
 function setRecBtn(on){const b=$('#sRec')||$('#rRec');if(!b)return;b.classList.toggle('recing',on);b.textContent=on?'■ 停止录音':(st.step===3?'● 重录':'● 重新录')}
-let mine=null;function playMine(key,cb){const r=REC.get(key);if(!r)return;M.pause();mine&&mine.pause();mine=new Audio(r.url);mine.onended=()=>cb&&cb();mine.play().catch(()=>{})}
-function compare(i){toast('先放原声，再放你的');playFrom(i,true,()=>setTimeout(()=>playMine(i),350))}
+function stopExtras(){stopRec();clearTimeout(compareTimer);compareTimer=null;st.onStop=null;if(mine){mine.pause();mine=null}}
+function playMine(key,cb){const r=REC.get(key);if(!r)return;stopExtras();M&&M.pause();mine=new Audio(r.url);mine.onended=()=>cb&&cb();mine.play().catch(()=>{})}
+function compare(i){toast('先放原声，再放你的');playFrom(i,true,()=>{compareTimer=setTimeout(()=>playMine(i),350)})}
 async function drawWave(r){const c=$('#wave');if(!c||!r)return;c.hidden=false;try{if(!r.peaks){const ac=new (window.AudioContext||window.webkitAudioContext)();const buf=await ac.decodeAudioData(await r.blob.arrayBuffer());const d=buf.getChannelData(0),N=90,step=Math.floor(d.length/N)||1;r.peaks=[];for(let k=0;k<N;k++){let mx=0;for(let j=k*step;j<(k+1)*step&&j<d.length;j+=8)mx=Math.max(mx,Math.abs(d[j]));r.peaks.push(mx)}ac.close&&ac.close()}
   const x=c.getContext('2d'),W=c.width=c.clientWidth*devicePixelRatio,H=c.height=c.clientHeight*devicePixelRatio,mx=Math.max(...r.peaks,.01);x.fillStyle=getComputedStyle(document.body).getPropertyValue('--accent');const bw=W/r.peaks.length;r.peaks.forEach((p,k)=>{const h=Math.max(2,p/mx*H*.85);x.fillRect(k*bw+1,(H-h)/2,bw-2,h)})}catch(e){}}
 
@@ -269,9 +293,9 @@ function initSession(){const ms=navigator.mediaSession;if(!ms)return;try{
   ms.metadata=new MediaMetadata({title:'第 '+seg().n+' 段 · '+seg().zh,artist:L.title,album:'lucca 英语 · 演讲跟读'});
   ms.setActionHandler('play',()=>play());ms.setActionHandler('pause',()=>pause());
   ms.setActionHandler('previoustrack',()=>$('#bPrev').click());ms.setActionHandler('nexttrack',()=>$('#bNext').click());}catch(e){}}
-document.addEventListener('visibilitychange',()=>{if(document.hidden){stopRec();if(M){P.t[seg().n]=+M.time().toFixed(2)}saveP()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){stopExtras();if(M){P.t[seg().n]=+M.time().toFixed(2)}saveP()}
   else if(M){const i=idxAt(M.time());setCur(i,true);st.playing=!M.paused();updPlay()}});
-addEventListener('pagehide',()=>{stopRec();if(M){P.t[seg().n]=+M.time().toFixed(2)}saveP()});
+addEventListener('pagehide',()=>{stopExtras();if(M){P.t[seg().n]=+M.time().toFixed(2)}saveP()});
 
 /* keyboard (desktop) */
 addEventListener('keydown',e=>{if(/TEXTAREA|INPUT/.test(e.target.tagName)||st.sheet)return;if(e.code==='Space'){e.preventDefault();$('#bPlay').click()}else if(e.key==='ArrowLeft')$('#bPrev').click();else if(e.key==='ArrowRight')$('#bNext').click();else if(e.key==='r')$('#bRep').click()});
