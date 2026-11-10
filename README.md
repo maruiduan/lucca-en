@@ -1,6 +1,6 @@
 # lucca-en — en.lucca.top
 
-English speech shadowing lessons (Jobs, TED talks). Live site: https://en.lucca.top/
+Five English speech-shadowing lessons (Jobs and four TED talks), easier to harder, roughly CET-4. Live site: https://en.lucca.top/
 
 ## Layout
 - `site/` — editable source (unstamped)
@@ -22,7 +22,7 @@ See lesson pages; TED talks are CC BY-NC-ND; Jobs audio from archive.org (timing
 
 ## 逻辑回归检查
 
-提交前执行（Node.js 20+，无额外 npm 依赖；部署工作流也会在打包、上传前执行）：
+提交前执行（Node.js 20+，无额外 npm 依赖；部署工作流也会在打包、上传前执行）。发往 `master` 的 pull request 由 `.github/workflows/pr-audit.yml` 跑同一套逻辑测试和 `upload_oss.py --check`。合并进 `master` 后仍由 `.github/workflows/deploy-oss.yml` 部署。
 
 ```bash
 node --check site/assets/lesson.js

@@ -13,6 +13,8 @@ External URLs (http:, https:, //, data:) are never touched.
 import hashlib, json, os, re, shutil, sys, posixpath
 
 STAMP = {'.js', '.css', '.woff', '.woff2', '.ttf', '.otf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico'}
+# Share image and the well-known favicon stay at fixed URLs (/og.png, /favicon.ico).
+STABLE = {'og.png', 'favicon.ico'}
 TEXT = {'.html', '.js', '.css'}
 EXCLUDE_RE = re.compile(r'(^|/)(\.|site-backup|stamp-manifest)|\.(diff|bak|tgz|md)$|\.pre-[^/]*\.html$|\.live[^/]*\.(html|png)$|-(390|1280)\.png$|(^|/)(tap-test|mq)\.js$')
 ALREADY = re.compile(r'\.[0-9a-f]{8}\.[A-Za-z0-9]+$')
@@ -33,7 +35,7 @@ def main():
     allf = files(src)
     fileset = set(allf)
     content = {f: open(os.path.join(src, f), 'rb').read() for f in allf}
-    stampable = [f for f in allf if os.path.splitext(f)[1].lower() in STAMP and not ALREADY.search(f)]
+    stampable = [f for f in allf if os.path.splitext(f)[1].lower() in STAMP and not ALREADY.search(f) and f not in STABLE]
     newname = {f: f for f in allf}
 
     def resolve(owner, p):

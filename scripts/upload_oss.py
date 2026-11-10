@@ -12,12 +12,12 @@ import base64, mimetypes, os, re, sys
 from pathlib import Path
 
 HASHED = re.compile(r"\.[0-9a-f]{8}\.[A-Za-z0-9]+$")
-NOCACHE = {"index.html", "robots.txt", "sitemap.xml", "stamp-manifest.json", "favicon.ico", "favicon.svg"}
+NOCACHE = {"index.html", "robots.txt", "sitemap.xml", "stamp-manifest.json", "favicon.ico", "favicon.svg", "og.png"}
 
 def ctype(path: Path) -> str:
     types = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
              ".js": "application/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
-             ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8",
+             ".svg": "image/svg+xml", ".png": "image/png", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8",
              ".mp3": "audio/mpeg", ".ico": "image/x-icon"}
     return types.get(path.suffix.lower()) or (mimetypes.guess_type(path.name)[0] or "application/octet-stream")
 
@@ -107,6 +107,11 @@ def _self_check() -> None:
     assert "x-oss-persistent-headers" not in js and "x-oss-persistent-headers" not in mp3
     assert js["Cache-Control"].endswith("immutable") and mp3["Cache-Control"].endswith("immutable")
     assert object_headers("index.html")["Cache-Control"] == "no-cache, must-revalidate"
+    og = object_headers("og.png")
+    ico = object_headers("favicon.ico")
+    assert og["Content-Type"] == "image/png" and ico["Content-Type"] == "image/x-icon"
+    assert og["Cache-Control"] == ico["Cache-Control"] == "no-cache, must-revalidate"
+    assert "x-oss-persistent-headers" not in og and "x-oss-persistent-headers" not in ico
     print("upload header self-check ok")
 
 def main():
