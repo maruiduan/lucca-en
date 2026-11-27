@@ -6,14 +6,14 @@ class AudioProvider extends Base{
   /* self-hosted file; offset/scale map lesson time -> file time (identity for the corrected file) */
   constructor(el,src,opt){super();this.kind='audio';this.label='音频';this.el=el;this.src=src;this.k=(opt&&opt.scale)||1;this.off=(opt&&opt.offset)||0}
   load(timeoutMs){return new Promise((res,rej)=>{
-    const a=this.a=new Audio();a.preload='auto';a.src=this.src;a.playsInline=true;
+    const a=this.a=new Audio();a.preload='metadata';a.src=this.src;a.playsInline=true;
     const to=setTimeout(()=>rej(new Error('timeout')),timeoutMs||15000);
     a.addEventListener('loadedmetadata',()=>{clearTimeout(to);res(this)},{once:true});
     a.addEventListener('error',()=>{clearTimeout(to);rej(new Error('audio'))},{once:true});
     a.addEventListener('play',()=>this.emit('play'));a.addEventListener('pause',()=>this.emit('pause'));
     a.load();
   })}
-  play(){const p=this.a.play();p&&p.catch(()=>{})}pause(){this.a.pause()}
+  play(){if(this.a.preload!=='auto')this.a.preload='auto';const p=this.a.play();p&&p.catch(()=>{})}pause(){this.a.pause()}
   seek(t){this.a.currentTime=Math.max(0,(t-this.off)/this.k)}
   time(){return this.a.currentTime*this.k+this.off}
   paused(){return this.a.paused}

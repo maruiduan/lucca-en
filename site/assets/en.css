@@ -271,7 +271,7 @@ body[data-step="0"] #bAB,body[data-step="1"] #bAB,body[data-step="4"] #bAB{displ
 .sheet .sh-note{font-size:11px;color:var(--sub);margin-top:8px;text-align:center}
 .sheet-bg{background:rgba(0,0,0,.12)}
 .sh-h{font-size:14px;font-weight:600;color:var(--ink)}
-.sheet.segs{max-height:70vh}
+.sheet.sh-segs{max-height:70vh}
 .seglist{display:grid;gap:6px;margin-top:10px}
 .seglist button{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);text-align:left}
 .seglist button.on{border-color:var(--accent);background:var(--soft)}
