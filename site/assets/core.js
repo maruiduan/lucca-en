@@ -4,11 +4,14 @@ const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.par
 const DAY=864e5;
 const Vocab={
   key:'en.vocab.v1',
-  all(){return LS.get(this.key,{})},
-  save(m){LS.set(this.key,m)},
+  _m:null,
+  all(){if(this._m==null)this._m=LS.get(this.key,{});return this._m},
+  save(m){this._m=m;LS.set(this.key,m)},
   has(w){return !!this.all()[w.toLowerCase()]},
-  add(item){const m=this.all();const k=item.w.toLowerCase();if(m[k])return false;
-    m[k]=Object.assign({added:Date.now(),due:Date.now(),iv:0,ease:2.5,reps:0,lapses:0},item);this.save(m);return true},
+  _put(item){const m=this.all();const k=item.w.toLowerCase();if(m[k])return false;
+    m[k]=Object.assign({added:Date.now(),due:Date.now(),iv:0,ease:2.5,reps:0,lapses:0},item);return true},
+  add(item){const ok=this._put(item);if(ok)this.save(this._m);return ok},
+  addMany(items){let n=0;for(const item of items)if(this._put(item))n++;if(n)this.save(this._m);return n},
   remove(w){const m=this.all();delete m[w.toLowerCase()];this.save(m)},
   due(){const now=Date.now();return Object.values(this.all()).filter(x=>x.due<=now).sort((a,b)=>a.due-b.due)},
   /* SM-2 lite: g 0=忘了 1=模糊 2=记得 */
@@ -21,6 +24,7 @@ const Vocab={
     x.last=Date.now();m[x.w.toLowerCase()]=x;this.save(m);return x},
   nextLabel(x,g){if(g===0)return'10分钟';let iv;if(g===1)iv=x.iv?Math.max(1,Math.round(x.iv*1.2)):1;else iv=x.reps===0?2:x.reps===1?5:Math.round(x.iv*x.ease);return iv+'天'}
 };
+addEventListener('storage',e=>{if(e.key==null||e.key===Vocab.key)Vocab._m=null});
 let voice=null;
 function pickVoice(){const vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[];
   voice=vs.find(v=>/en-US/i.test(v.lang)&&/Samantha|Google US|Aria|Jenny|Ava/i.test(v.name))||vs.find(v=>/en-US/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))||null}

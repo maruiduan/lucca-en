@@ -9,8 +9,50 @@ Builds a cache-busted copy of a static site.
 Idempotent: always re-hashes from SRC, never stamps a stamped file.
 Audio/video (mp3 etc.) are copied unchanged (large, rarely change).
 External URLs (http:, https:, //, data:) are never touched.
+Lesson data.js keeps sentence word-timings ("w") in SRC; DIST drops them.
 """
 import hashlib, json, os, re, shutil, sys, posixpath
+
+# Sentence "w" is [[start, end], ...] and is not read by the site. Vocab "w" is a string.
+_WORD_TIME = re.compile(
+    r',\s*"w"\s*:\s*\[\s*(?:\[\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*\]\s*,?\s*)*\]'
+)
+
+def strip_sentence_word_times(rel, data):
+    """Remove unread per-word timestamps from published lesson data. SRC is untouched."""
+    if posixpath.basename(rel) != 'data.js' or not data.startswith(b'window.LESSON='):
+        return data
+    text = data.decode('utf-8')
+    prefix = 'window.LESSON='
+    orig_body = text[len(prefix):]
+    if orig_body.endswith(';'):
+        orig_body = orig_body[:-1]
+    orig = json.loads(orig_body)
+    sents = orig.get('sentences') or []
+    need = sum(1 for s in sents if 'w' in s)
+    new, n = _WORD_TIME.subn('', text)
+    if n != need:
+        raise SystemExit(f'{rel}: stripped {n} word-time arrays, expected {need}')
+    if n == 0:
+        return data
+    body = new[len(prefix):]
+    if body.endswith(';'):
+        body = body[:-1]
+    obj = json.loads(body)
+    out_sents = obj.get('sentences') or []
+    if len(out_sents) != len(sents):
+        raise SystemExit(f'{rel}: sentence count changed')
+    for i, (a, b) in enumerate(zip(sents, out_sents)):
+        if 'w' in b:
+            raise SystemExit(f'{rel}: sentence {i} still has w')
+        for k in ('id', 'p', 'en', 'zh', 's', 'e'):
+            if a.get(k) != b.get(k):
+                raise SystemExit(f'{rel}: sentence {i} field {k} changed')
+    for g in obj.get('segments') or []:
+        for v in g.get('vocab') or []:
+            if not isinstance(v.get('w'), str):
+                raise SystemExit(f'{rel}: vocab w damaged')
+    return new.encode('utf-8')
 
 STAMP = {'.js', '.css', '.woff', '.woff2', '.ttf', '.otf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico'}
 # Share image and the well-known favicon stay at fixed URLs (/og.png, /favicon.ico).
@@ -34,7 +76,7 @@ def main():
     src, dist = sys.argv[1].rstrip('/'), sys.argv[2].rstrip('/')
     allf = files(src)
     fileset = set(allf)
-    content = {f: open(os.path.join(src, f), 'rb').read() for f in allf}
+    content = {f: strip_sentence_word_times(f, open(os.path.join(src, f), 'rb').read()) for f in allf}
     stampable = [f for f in allf if os.path.splitext(f)[1].lower() in STAMP and not ALREADY.search(f) and f not in STABLE]
     newname = {f: f for f in allf}
 

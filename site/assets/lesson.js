@@ -146,7 +146,7 @@ $('#sents').addEventListener('click',e=>{
 
 /* ---------- sheets (word / word list / segments) ---------- */
 function openSheet(kind,html){if(M&&!M.paused()&&kind!=='segs'){st.resume=true;M.pause()}else if(kind!=='segs'&&!st.sheet)st.resume=false;
-  st.sheet=kind;$('#sheet').className='sheet open '+kind;$('#sheet').innerHTML=html;$('#sheetBg').classList.add('open')}
+  st.sheet=kind;$('#sheet').className='sheet open sh-'+kind;$('#sheet').innerHTML=html;$('#sheetBg').classList.add('open')}
 function closeSheet(silent){if(!st.sheet)return;const was=st.sheet;st.sheet=null;$('#sheet').classList.remove('open');$('#sheetBg').classList.remove('open');$$('.w.sel').forEach(e=>e.classList.remove('sel'));
   if(!silent&&st.resume&&was!=='segs'&&M){st.resume=false;M.play()}st.resume=false}
 /* keep the tapped sentence visible above the sheet */
@@ -199,7 +199,7 @@ function renderPanel(){const g=seg(),k=st.step,el=$('#panel');
   else if(k===2){el.innerHTML=head('第三步 · 精读','看中英字幕，弄懂每一句。点句子听原声；点单词或句子右边的「查词」看发音和释义，可以加入生词本。虚线标出的是这一段的重点词。')+
      '<div class="chips" id="vchips">'+g.vocab.map(v=>'<button class="chip" data-v="'+esc(v.w)+'">'+esc(v.w)+'</button>').join('')+'</div><div class="row"><button class="btn" id="addAll">＋ 重点词全部加入生词本</button></div>'+nextBar(2);
     $$('#vchips .chip').forEach(c=>c.onclick=()=>{const v=VMAP[c.dataset.v.toLowerCase()];const hit=segIds(g).find(i=>S[i].en.toLowerCase().includes(v.w.toLowerCase().split(/[ (]/)[0].replace(/e$/,'')))??g.from;openWord(v.w,v.w,hit)});
-    $('#addAll').onclick=()=>{let n=0;g.vocab.forEach(v=>{const hit=segIds(g).find(i=>S[i].en.toLowerCase().includes(v.w.toLowerCase().split(/[ (]/)[0].replace(/e$/,'')))??g.from;if(Vocab.add({w:v.w,ipa:v.ipa,m:v.m,ex:v.ex,exzh:v.exzh,ctx:S[hit].en,ctxzh:S[hit].zh,src:L.slug+'#'+g.n}))n++});toast(n?'加入了 '+n+' 个词':'都已在生词本');updVCount();renderSents()}}
+    $('#addAll').onclick=()=>{const n=Vocab.addMany(g.vocab.map(v=>{const hit=segIds(g).find(i=>S[i].en.toLowerCase().includes(v.w.toLowerCase().split(/[ (]/)[0].replace(/e$/,'')))??g.from;return {w:v.w,ipa:v.ipa,m:v.m,ex:v.ex,exzh:v.exzh,ctx:S[hit].en,ctxzh:S[hit].zh,src:L.slug+'#'+g.n}}));toast(n?'加入了 '+n+' 个词':'都已在生词本');updVCount();renderSents()}}
   else if(k===3){if(st.shId==null||st.shId<g.from||st.shId>g.to)st.shId=g.from;
     el.innerHTML=head('第四步 · 跟读模仿','一句一句模仿原声的语调、重音、连读和停顿。先听几遍（底部「单句循环」可以反复听），再点大按钮录音，录完会自动先放原声、再放你的。录音只存在这台手机上。')+
      '<div class="cur-big" id="shBig"></div>'+
